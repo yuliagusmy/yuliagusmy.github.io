@@ -1,205 +1,202 @@
+
 "use strict";
 
-let W, H, ctx, ropes,stat,turn;
-
-let mouse, touch;
-let move = false;
-
-const u = {
-    drawC(x, y, r, c) {
-        ctx.beginPath();
-        ctx.fillStyle = c;
-        ctx.arc(x, y, r, 0, 2*Math.PI);
-        ctx.fill();
-        ctx.closePath();
-    },
-    
-    drawL(x0,y0,x, y, r, c) {
-        ctx.beginPath();
-        ctx.moveTo(x0,y0);
-        ctx.lineWidth = r;
-        ctx.strokeStyle = c;
-        ctx.lineTo(x,y);
-        
-        ctx.stroke();
-        ctx.closePath();
-    },
-    
-    pick(max=1, min=0){
-        return Math.random() * (max - min) + min;
-    },
-    
-    ipick(max=1, min=0){
-        return Math.round(Math.random() * (max - min) + min);
-    },
-    writeT(text,x,y){
-        ctx.beginPath();
-// The size is set with the font
-        ctx.font = '25px serif';
-// align position
-        ctx.fillStyle = "yellow";
-        ctx.textAlign = "center"; 
-        ctx.textBaseline = "middle"; 
-// draw text
-        ctx.fillText(text,x,y);
-        ctx.fill();
-        ctx.closePath();}
-};
-
-class Rope{
-    constructor(x,y,r,c,z){
-        this.ref = {x:x, y:y};
-        this.si=Math.min(0.05*this.ref.x,0.05*(W-this.ref.x),0.05*this.ref.y,0.05*(H-this.ref.y));
-        this.d ={x:1, y:-1.3};
-        this.z =z;
-        this.r =r;
-        this.c =c;
-        this.ar =0;
-        this.f=1;
-        this.n=[];
-        this.n.push(new Node(this.ref.x, this.ref.y,this.r,this.c));
-        this.createCords();
-    }
-    createCords(){
-    let a, b;
-        for(let i=0;i<20;i++){
-            a=this.n[0].x+5*(i+1);
-            b=this.n[0].y+5*(i+1);
-            let color=this.c;
-            this.n.push(new Node(a,b,u.pick(),color));}
-    }
-// Controls movement
-    update(idx) {
-        for(let j=0;j<this.n.length;j++){
-// parametric equations driven by increment in angle this.z for node 0
-        if(!j){
-        if(mouse.x&&(idx!=turn))continue;
-        this.z+=0.01;
-        let tx=Math.sin(this.z);
-        this.n[j].x = mouse.x || this.ref.x+ (this.si*(16*tx*tx*tx));
-        tx=this.z;
-        this.n[j].y = mouse.y || this.ref.y-(this.si*(13*Math.cos(tx)-5*Math.cos(2*tx)- 2*Math.cos(3*tx) - Math.cos(4*tx)));
-// reset position with touch
-            if(mouse.x){this.ref.x=mouse.x;
-                if(mouse.y)this.ref.y=mouse.y;
-                this.ar=0; //not calculating
-                this.z%=6.3132;
-                turn++;
-                turn%=(ropes.length);
-                mouse.x=null;
-                mouse.y=null;
-                this.si=Math.min(0.05*this.ref.x,0.05*(W-this.ref.x),0.05*this.ref.y,0.05*(H-this.ref.y));
-                ctx.fillStyle = "rgba(24,0,151,0.95)";
-                ctx.fillRect(0, 0, W, H);}
-        }
-        else{
-        this.n[j].x +=  (this.n[j-1].x-this.n[j].x) /(j+1) ;
-        this.n[j].y +=  (this.n[j-1].y-this.n[j].y) /(j+1) ;
-        }
-    this.n[j].draw();
-    }
-    }
-}
-
-class Node{
-    constructor(x,y,r,c){
-        this.x = x;
-        this.y = y;
-        this.r = r;
-        this.c = c;
-    }
-    draw() {
-        u.drawC(this.x, this.y, this.r, this.c);
-    }
-    check(ref,d,si,f){
-        //return(this.x>ref.x+(2*si)-1 || this.x<ref.x-(2*si)+1);
-        return(this.x>ref.x+(2*si) || this.x<ref.x-(2*si));
-    }
-}
-
-const eventsListener = () => {
-    mouse = {
-        x: null,
-        y: null
-    };
-     touch = {
-        x: null,
-        y: null
-    };
-
-    window.addEventListener("mousemove", function(event){
-        if(move){
-            mouse.x = event.clientX;
-            mouse.y = event.clientY;
-        }
-        else{
-            mouse.x = null;
-            mouse.y = null;
-        }
-    });
-    window.addEventListener("mousedown", function(event){
-        move=true;
-        mouse.x = event.clientX;
-        mouse.y = event.clientY;
-    });
-    window.addEventListener("mouseup", function(event){
-        move=false;
-    });
-    window.addEventListener("touchstart", function(event){
-        let touch = event.changedTouches[0];
-        let touchX = parseInt(touch.clientX);
-        let touchY = parseInt(touch.clientY);
-        mouse.x = touchX-cvs.offsetLeft;
-        mouse.y = touchY-cvs.offsetTop;
-        move=true;
-    });
-    
-    window.addEventListener("touchmove", function(event){
-        //event.preventDefault();
-        if(move){
-            let touch = event.changedTouches[0];
-            let touchX = parseInt(touch.clientX);
-            let touchY = parseInt(touch.clientY);
-            event.preventDefault();
-            mouse.x = touchX-cvs.offsetLeft;
-            mouse.y = touchY-cvs.offsetTop;
-        }
-    },{passive:false}); //*** thanks to SR
-    
-    window.addEventListener("touchend", function(event){
-        mouse.x = null;
-        mouse.y = null;
-        move=false;
-    });
-};
-
-const animate = () => {
-    ctx.fillStyle = "rgba(24,0,151,0.015)";
-    ctx.fillRect(0, 0, W, H);
-    //ropes.forEach((x) => {x.update()});
-    ropes.forEach((x, idx) => {x.update(idx)});
-    if(stat){
-    u.writeT("x=16*sin**3(t); y=13*cos(t)-",0.5*W,0.85*H);
-u.writeT("5*cos(2t)- 2*cos(3t) - cos(4t)",0.5*W,0.9*H);
-    u.writeT("proves that love is irrational",0.5*W,0.95*H);}
-    requestAnimationFrame(animate);
-};
-
-const init = () => {
-    ctx = document.querySelector("#cvs").getContext("2d");
-    W = ctx.canvas.width = innerWidth;
-    H = ctx.canvas.height = innerHeight;
-    turn=0;
-    stat=(window.confirm("Want to know the formula?"));
-    ropes=[];
-    ropes.push(new Rope(W*0.5, H*0.25,1,"hotpink",0.2));
-    //ropes.push(new Rope(W*0.25, H*0.25,5,"cyan"));
-    ropes.push(new Rope(W*0.5, H*0.25,2,"cyan",3.341));
-    //window.alert("Credit to Lolo for event handlers: touch or strife");
-    ctx.fillStyle = "rgba(24,0,151,0.99)";
-    ctx.fillRect(0, 0, W, H);
-    eventsListener();
-    requestAnimationFrame(animate);
-};
-
-onload = init;
+!(function () {
+  function t() {
+    !(function () {
+      var t, g;
+      if (
+        ((o = l / 2),
+        (a = s / 2),
+        (n = c.create()),
+        (e = n.world),
+        (r = d.create({
+          element: document.body,
+          engine: n,
+          options: {
+            width: l,
+            height: s,
+            wireframes: !1,
+            background: "transparent",
+            pixelRatio: 1
+          }
+        })),
+        (i = u.create()),
+        u.run(i, n),
+        (n.gravity.scale = 0),
+        (n.gravity.x = 0),
+        (n.gravity.y = 0),
+        "undefined" != typeof fetch)
+      ) {
+        (t = function (t, e) {
+          return Array.prototype.slice.call(t.querySelectorAll(e));
+        }),
+          (g = function (t) {
+            return fetch(t)
+              .then(function (t) {
+                return t.text();
+              })
+              .then(function (t) {
+                return new window.DOMParser().parseFromString(
+                  t,
+                  "image/svg+xml"
+                );
+              });
+          })(svg_terrain).then(function (n) {
+            var r = t(n, "path"),
+              i = r.map(function (t) {
+                return v.pathToVertices(t, 30);
+              }),
+              l = y.fromVertices(
+                256,
+                200,
+                i,
+                {
+                  isStatic: !0,
+                  render: {
+                    fillStyle: "transparent",
+                    strokeStyle: "transparent",
+                    lineWidth: 1
+                  }
+                },
+                !0
+              );
+            h.add(e, l), (o = l.position.x), (a = l.position.y);
+          });
+        let n = null,
+          r = null;
+        g(svg_heart).then(function (e) {
+          n ||
+            ((r = t(e, "path").map(function (t) {
+              return v.pathToVertices(t, 50);
+            })),
+            (n = y.fromVertices(
+              o,
+              1.5 * a,
+              r,
+              {
+                restitution: 0,
+                friction: 0,
+                frictionStatic: 0,
+                frictionAir: 0,
+                mass: 20,
+                render: {
+                  lineWidth: 2
+                }
+              },
+              !0
+            )),
+            M.scale(n, 0.2, 0.2));
+        });
+        let i = function () {
+          let t = structuredClone(n);
+          (t.id = f.nextId()),
+            (t.position.x = o),
+            (t.position.y = 1.5 * a),
+            S.push(S.shift());
+          let r = S[0];
+          (t.render.fillStyle = r),
+            (t.render.strokeStyle = r),
+            t.parts.forEach(function (e, n) {
+              (t.parts[n].render.fillStyle = r),
+                (t.parts[n].render.strokeStyle = r);
+            }),
+            M.setAngle(t, Math.round(360 * Math.random()), !1),
+            M.setVelocity(t, {
+              x: f.random(-5, 5),
+              y: f.random(-5, -1)
+            }),
+            h.add(e, t);
+        };
+        setTimeout(function () {
+          let t = 0,
+            e = setInterval(() => {
+              i(), 2 == t && (clearInterval(e), (n = null), (r = null)), t++;
+            }, 780);
+        }, 220);
+      } else f.warn("Fetch is not available. Could not load SVG.");
+      let k = m.create(r.canvas),
+        x = p.create(n, {
+          mouse: k,
+          constraint: {
+            stiffness: 0.2,
+            render: {
+              visible: !1
+            }
+          }
+        });
+      h.add(e, x),
+        (r.mouse = k),
+        d.lookAt(r, {
+          min: {
+            x: 0,
+            y: 0
+          },
+          max: {
+            x: l,
+            y: s
+          }
+        }),
+        d.run(r);
+    })();
+  }
+  let e,
+    n,
+    r,
+    i,
+    o,
+    a,
+    l = 512,
+    s = 512,
+    c = (Matter.World, Matter.Engine),
+    d = Matter.Render,
+    u = Matter.Runner,
+    f = (Matter.Composites, Matter.Common),
+    p = Matter.MouseConstraint,
+    m = Matter.Mouse,
+    h = Matter.Composite,
+    y = (Matter.Vertices, Matter.Bodies),
+    M = Matter.Body,
+    v = (Matter.Events, Matter.Query, Matter.Svg),
+    g = [
+      "pink",
+      "deeppink",
+      "deeppink",
+      "hotpink",
+      "hotpink",
+      "lightpink",
+      "magenta",
+      "orchid"
+    ],
+    S = ["mediumvioletred", "crimson", "salmon"];
+  (window.onload = () => {
+    t();
+  }),
+    setTimeout(function () {
+      let t = 0,
+        n = setInterval(() => {
+          !(function () {
+            let t = f.choose(g);
+            const n = y.circle(o, a, 25, {
+              restitution: 0,
+              friction: 0,
+              frictionStatic: 0,
+              frictionAir: 0,
+              mass: 10,
+              render: {
+                fillStyle: t,
+                strokeStyle: t,
+                lineWidth: 0
+              }
+            });
+            M.setVelocity(n, {
+              x: f.random(-1, 1),
+              y: f.random(-1, 1)
+            }),
+              h.add(e, n);
+          })(),
+            60 == t && clearInterval(n),
+            t++;
+        }, 100);
+    }, 2e3);
+})();
